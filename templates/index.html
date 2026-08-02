@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Personalised Study Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #89f7fe, #66a6ff); 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding: 20px;
+        }
+      
+        h1 {
+            text-align: center;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        form {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 850px;   /* Increased width */
+            margin: auto;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        label {
+            display: inline-block;
+            width: 140px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input, select {
+            margin: 5px 0;
+            padding: 8px;
+            width: calc(100% - 150px);
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.3s ease;
+        }
+
+        button:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        table {
+            border-collapse: collapse;
+            margin: 25px auto;
+            width: 90%; /* Wider */
+            background: #fff;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            border: 1px solid #eee;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+        }
+
+        tr.study {
+            background-color: #d4edda; /* light green */
+        }
+
+        tr.break {
+            background-color: #f8d7da; /* light red */
+        }
+
+        .error {
+            color: #ff4444;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #fff;
+            margin-top: 30px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .download-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .download-section button {
+            background: #007BFF;
+        }
+
+        .download-section button:hover {
+            background: #0056b3;
+        }
+
+        .motivation {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #222;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 Personalised Study Planner</h1>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST">
+        <label>Total Hours:</label>
+        <input type="number" step="0.5" name="total_hours" required><br>
+
+        <label>Start Time:</label>
+        <input type="time" name="start_time" required><br><br>
+
+        {% for i in range(1,6) %}
+            <label>Subject {{i}}:</label>
+            <input type="text" name="subject{{i}}"><br>
+
+            <label>Priority (1-5):</label>
+            <select name="priority{{i}}">
+                <option value="">--</option>
+                <option value="1">1 (Highest)</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5 (Lowest)</option>
+            </select><br><br>
+        {% endfor %}
+
+        <div style="text-align:center;">
+            <button type="submit">Generate Schedule</button>
+        </div>
+    </form>
+
+    {% if schedule %}
+        <h2>🕒 Your Study Schedule</h2>
+        <table id="studyTable">
+            <tr>
+                <th>Subject</th>
+                <th>Hours</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Action</th>
+            </tr>
+            {% for s in schedule %}
+            <tr class="{{ s.type }}">
+                <td>{{ s.name }}</td>
+                <td>{{ "%.2f"|format(s.hours) }}</td>
+                <td>{{ s.start }}</td>
+                <td>{{ s.end }}</td>
+                <td>
+                    {% if s.type == 'study' %}
+                        <button onclick="markDone(this)">Done</button>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <div class="motivation" id="motivation"></div>
+
+        <!-- Chart -->
+        {% if chart_base64 %}
+            <h2 style="text-align:center;">📊 Study Distribution</h2>
+            <div style="text-align:center;">
+                <img src="data:image/png;base64,{{ chart_base64 }}" alt="Study Chart">
+            </div>
+        {% endif %}
+
+        <!-- Motivational Tip -->
+        {% if tip %}
+            <h3 style="text-align:center; color: #222;">💡 Tip: {{ tip }}</h3>
+        {% endif %}
+
+        <!-- PDF Download -->
+        <form method="POST" action="/download_pdf" class="download-section">
+            <input type="hidden" name="schedule" value="{{ schedule }}">
+            <button type="submit">📥 Download as PDF</button>
+        </form>
+    {% endif %}
+
+    <script>
+        function markDone(button) {
+            let row = button.closest("tr");
+            row.remove();
+
+            // Motivational words
+            const words = ["🎉 Well done!", "💪 Great job!", "👏 Keep it up!", "🔥 Awesome work!", "🌟 You're doing amazing!"];
+            let randomWord = words[Math.floor(Math.random() * words.length)];
+            document.getElementById("motivation").innerText = randomWord;
+        }
+    </script>
+</body>
+</html>
